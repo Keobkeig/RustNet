@@ -1,84 +1,19 @@
+// main.rs
+
 extern crate rand;
 use rand::Rng;
-
-//add the override for the + operator
 use std::ops::{Add, Mul, Sub};
 
+/// A simple Matrix struct with rows, columns, and a flat vector for data.
 #[derive(Debug, Clone)]
 pub struct Matrix {
     pub rows: usize,
     pub cols: usize,
-    pub data: Vec<f64>, 
-}
-
-
-
-impl Add for Matrix {
-    type Output = Matrix;
-
-    fn add(self, other: Matrix) -> Matrix {
-        if self.rows != other.rows || self.cols != other.cols {
-            panic!("Matrix dimensions must match");
-        }
-
-        let buffer: Vec<f64> = self.data.iter().zip(other.data.iter()).map(|(a, b)| a + b).collect();
-
-        Matrix {
-            rows: self.rows,
-            cols: self.cols,
-            data: buffer,
-        }
-    }
-}
-
-impl Sub for Matrix {
-    type Output = Matrix;
-
-    fn sub(self, other: Matrix) -> Matrix {
-        if self.rows != other.rows || self.cols != other.cols {
-            panic!("Matrix dimensions must match");
-        }
-
-        let buffer: Vec<f64> = self.data.iter().zip(other.data.iter()).map(|(a, b)| a - b).collect();
-
-        Matrix {
-            rows: self.rows,
-            cols: self.cols,
-            data: buffer,
-        }
-    }
-}
-
-//override the * operator to be dot product
-impl Mul for Matrix {
-    type Output = Matrix;
-
-    fn mul(self, other: Matrix) -> Matrix {
-        if self.cols != other.rows {
-            panic!("Matrix dimensions must match");
-        }
-
-        let mut buffer = vec![0.0; self.rows * other.cols];
-
-        for i in 0..self.rows {
-            for j in 0..other.cols {
-                let mut sum = 0.0;
-                for k in 0..self.cols {
-                    sum += self.data[i * self.cols + k] * other.data[k * other.cols + j];
-                }
-                buffer[i * other.cols + j] = sum;
-            }
-        }
-
-        Matrix {
-            rows: self.rows,
-            cols: other.cols,
-            data: buffer,
-        }
-    }
+    pub data: Vec<f64>,
 }
 
 impl Matrix {
+    /// Creates a new matrix with the given dimensions, filled with zeros.
     pub fn new(rows: usize, cols: usize) -> Self {
         Matrix {
             rows,
@@ -87,7 +22,8 @@ impl Matrix {
         }
     }
 
-    pub fn from(vec: Vec<f64>) -> Self {
+    /// Creates a column matrix (n×1) from a given vector.
+    pub fn from_vec(vec: Vec<f64>) -> Self {
         let rows = vec.len();
         Matrix {
             rows,
@@ -96,81 +32,168 @@ impl Matrix {
         }
     }
 
+    /// Creates a matrix of the given dimensions with random values in [0, 1).
     pub fn random(rows: usize, cols: usize) -> Matrix {
-        let mut buffer = Vec::<f64>::with_capacity(rows * cols);
-        
-        for _ in 0..rows * cols {
-            buffer.push(rand::rng().random_range(0.0..1.0));
+        let mut rng = rand::thread_rng();
+        let mut data = Vec::with_capacity(rows * cols);
+        for _ in 0..(rows * cols) {
+            data.push(rng.gen_range(0.0..1.0));
         }
-
-        Matrix {
-            rows,
-            cols,
-            data: buffer,
-        }
+        Matrix { rows, cols, data }
     }
 
+    /// Returns a copy of the matrix.
     pub fn copy(&self) -> Matrix {
+        self.clone()
+    }
+
+    /// Returns a new matrix by applying a function elementwise.
+    pub fn elementwise_apply<F>(&self, func: F) -> Matrix
+    where
+        F: Fn(f64) -> f64,
+    {
+        let data = self.data.iter().map(|&x| func(x)).collect();
         Matrix {
             rows: self.rows,
             cols: self.cols,
-            data: self.data.clone(),
+            data,
         }
     }
 
-    pub fn elementwise_multiply(self, errors: &Matrix) -> Matrix {
-        if self.data.len() != errors.data.len() {
-            panic!("Cannot perform Hadamard product with non-identically shaped matrices");
+    /// Returns the Hadamard (elementwise) product of two matrices.
+    pub fn elementwise_multiply(&self, other: &Matrix) -> Matrix {
+        if self.rows != other.rows || self.cols != other.cols {
+            panic!("Dimension mismatch for elementwise multiplication");
         }
-
-        let buffer: Vec<f64> = self.data.iter().zip(errors.data.iter()).map(|(a, b)| a * b).collect();
-
+        let data = self
+            .data
+            .iter()
+            .zip(other.data.iter())
+            .map(|(a, b)| a * b)
+            .collect();
         Matrix {
             rows: self.rows,
             cols: self.cols,
-            data: buffer,
+            data,
         }
     }
 
+    /// Returns a new matrix scaled by the given scalar.
+    pub fn scalar_mul(&self, scalar: f64) -> Matrix {
+        let data = self.data.iter().map(|&x| x * scalar).collect();
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data,
+        }
+    }
+
+    /// Returns the transpose of the matrix.
     pub fn transpose(&self) -> Matrix {
-        let mut transposed_data = vec![0.0; self.cols * self.rows];
+        let mut result = vec![0.0; self.rows * self.cols];
         for i in 0..self.rows {
             for j in 0..self.cols {
-                transposed_data[j * self.rows + i] = self.data[i * self.cols + j];
+                result[j * self.rows + i] = self.data[i * self.cols + j];
             }
         }
         Matrix {
             rows: self.cols,
             cols: self.rows,
-            data: transposed_data,
+            data: result,
         }
     }
 }
 
-impl Iterator for Matrix {
-    type Item = f64;
+//add
+impl Add for Matrix {
+    type Output = Matrix;
 
-    fn next(&mut self) -> Option<f64> {
-        self.data.pop()
+    fn add(self, other: Matrix) -> Matrix {
+        if self.rows != other.rows || self.cols != other.cols {
+            panic!("Matrix dimensions must match for addition");
+        }
+        let data = self
+            .data
+            .iter()
+            .zip(other.data.iter())
+            .map(|(a, b)| a + b)
+            .collect();
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data,
+        }
     }
 }
+
+//mat sub
+impl Sub for Matrix {
+    type Output = Matrix;
+
+    fn sub(self, other: Matrix) -> Matrix {
+        if self.rows != other.rows || self.cols != other.cols {
+            panic!("Matrix dimensions must match for subtraction");
+        }
+        let data = self
+            .data
+            .iter()
+            .zip(other.data.iter())
+            .map(|(a, b)| a - b)
+            .collect();
+        Matrix {
+            rows: self.rows,
+            cols: self.cols,
+            data,
+        }
+    }
+}
+
+//dot prod
+impl Mul for Matrix {
+    type Output = Matrix;
+
+    fn mul(self, other: Matrix) -> Matrix {
+        if self.cols != other.rows {
+            panic!("Matrix dimensions must agree for multiplication");
+        }
+        let mut result = vec![0.0; self.rows * other.cols];
+        for i in 0..self.rows {
+            for j in 0..other.cols {
+                let mut sum = 0.0;
+                for k in 0..self.cols {
+                    sum += self.data[i * self.cols + k] * other.data[k * other.cols + j];
+                }
+                result[i * other.cols + j] = sum;
+            }
+        }
+        Matrix {
+            rows: self.rows,
+            cols: other.cols,
+            data: result,
+        }
+    }
+}
+
 pub struct Network {
     layers: Vec<usize>,
     weights: Vec<Matrix>,
     biases: Vec<Matrix>,
-    data: Vec<Matrix>,
-    activation: fn(f64) -> f64,
-    activation_derivative: fn(f64) -> f64,
+    activations: Vec<Matrix>,
     learning_rate: f64,
 }
 
 impl Network {
-    pub fn new(layers: Vec<usize>, activation: fn(f64) -> f64, activation_derivative: fn(f64) -> f64, learning_rate: f64) -> Self {
-        let mut weights = vec![];
-        let mut biases = vec![];
+    /// Creates a new network with the specified layer sizes and learning rate.
+    /// For example, `Network::new(vec![2, 3, 1], 0.5)` creates a network with 2 inputs,
+    /// one hidden layer with 3 neurons, and 1 output neuron.
+    pub fn new(layers: Vec<usize>, learning_rate: f64) -> Self {
+        let mut weights = Vec::new();
+        let mut biases = Vec::new();
 
         for i in 0..layers.len() - 1 {
+            // Weight matrix shape: (next_layer_size, current_layer_size)
             weights.push(Matrix::random(layers[i + 1], layers[i]));
+            // Bias vector shape: (next_layer_size, 1)
             biases.push(Matrix::random(layers[i + 1], 1));
         }
 
@@ -178,105 +201,129 @@ impl Network {
             layers,
             weights,
             biases,
-            data: vec![],
-            activation,
-            activation_derivative,
+            activations: Vec::new(),
             learning_rate,
         }
     }
 
-    pub fn feedforward(&mut self, inputs: Matrix) -> Matrix {
-        assert!(self.layers[0] == inputs.data.len(), "Input data must match the input layer size");
+    fn sigmoid(x: f64) -> f64 {
+        1.0 / (1.0 + (-x).exp())
+    }
 
-        let mut current = inputs; 
-        self.data = vec![current.clone()];
+    fn sigmoid_derivative(a: f64) -> f64 {
+        a * (1.0 - a)
+    }
 
-        for i in 0..self.layers.len() - 1 {
-            current = (self.weights[i].clone() * current.clone()) + self.biases[i].clone();
-            current.data = current.data.iter().map(|x| (self.activation)(*x)).collect();
-            self.data.push(current.clone());
+    pub fn feedforward(&mut self, input: Matrix) -> Matrix {
+        if input.rows != self.layers[0] || input.cols != 1 {
+            panic!("Input dimensions do not match network input layer");
         }
 
+        self.activations.clear();
+        self.activations.push(input.clone()); // activation of the input layer
+
+        let mut current = input;
+        for i in 0..self.weights.len() {
+            // z = W * a + b (W: weights, a: activations, b: biases)
+            let z = self.weights[i].clone() * current.clone() + self.biases[i].clone();
+            // a = f(z) (f: activation function)
+            let activated = z.elementwise_apply(|x| Network::sigmoid(x));
+            self.activations.push(activated.clone());
+            current = activated;
+        }
         current
     }
 
-    pub fn back_propogate(&mut self, inputs: &Matrix, targets: Matrix) {
-        let output = self.data.last().unwrap();
-        let mut errors = targets - output.clone();
-        for i in (0..self.layers.len() - 1).rev() {
-                // Compute layer-specific gradients
-            let layer_output = &self.data[i];
-            
-            // Compute derivatives for this layer
-            let derivatives: Vec<f64> = layer_output.data.iter()
-                .map(|&x| (self.activation_derivative)(x))
-                .collect();
+    pub fn backpropagate(&mut self, target: Matrix) {
+        let num_layers = self.activations.len();
+        // output activation (a^L)
+        let output = self.activations[num_layers - 1].clone();
+        let error = target - output.clone();
+        // delta = error ∘ f'(output) (elementwise multiplication)
+        let output_derivative = output.elementwise_apply(|a| Network::sigmoid_derivative(a));
+        let mut delta = error.elementwise_multiply(&output_derivative);
 
-            // Scale gradients by error and learning rate
-            let gradients: Vec<f64> = derivatives.iter()
-                .zip(errors.data.iter())
-                .map(|(&deriv, &err)| deriv * err * self.learning_rate)
-                .collect();
+        //update W and b for output
+        // The weight connecting the last hidden layer to the output layer is at index num_layers - 2.
+        let prev_activation = self.activations[num_layers - 2].clone();
+        let prev_activation_T = prev_activation.transpose();
+        let weight_grad = delta.clone() * prev_activation_T;
+        self.weights[num_layers - 2] =
+            self.weights[num_layers - 2].clone() + weight_grad.scalar_mul(self.learning_rate);
+        self.biases[num_layers - 2] =
+            self.biases[num_layers - 2].clone() + delta.clone().scalar_mul(self.learning_rate);
 
-            let gradient_matrix = Matrix { 
-                rows: gradients.len(),
-                cols: 1,
-                data: gradients.clone(),
-            };
+        // --- 3. Propagate the error backwards and update earlier layers ---
+        // Loop backwards over hidden layers (l indexes the layer that produced the activation we’re updating)
+        for l in (1..(num_layers - 1)).rev() {
+            // the weights connecting layer l to l+1 are at index l.
+            let weight_next = self.weights[l].clone();
+            // error for hidden = W^(l)^T * delta
+            let error_hidden = weight_next.transpose() * delta;
+            // delta for hidden = error_hidden ∘ f'(activation[l])
+            let hidden_activation = self.activations[l].clone();
+            let hidden_derivative =
+                hidden_activation.elementwise_apply(|a| Network::sigmoid_derivative(a));
+            delta = error_hidden.elementwise_multiply(&hidden_derivative);
 
-            let deltas = gradient_matrix.clone() * layer_output.transpose();
-            self.weights[i] = self.weights[i].clone() + deltas;
-            self.biases[i] = self.biases[i].clone() + gradient_matrix.clone();
-
-            if i > 0 {
-                errors = self.weights[i].transpose() * errors;
-            }
+            // update layer l-1
+            let prev_activation = self.activations[l - 1].clone();
+            let prev_activation_T = prev_activation.transpose();
+            let weight_grad = delta.clone() * prev_activation_T;
+            self.weights[l - 1] =
+                self.weights[l - 1].clone() + weight_grad.scalar_mul(self.learning_rate);
+            self.biases[l - 1] =
+                self.biases[l - 1].clone() + delta.clone().scalar_mul(self.learning_rate);
         }
     }
 
     pub fn train(&mut self, inputs: Vec<Vec<f64>>, targets: Vec<Vec<f64>>, epochs: usize) {
-        for i in 0..epochs {
-            if epochs < 100 || i % (epochs / 100) == 0 {
-                println!("Epoch: {}", i);
+        if inputs.len() != targets.len() {
+            panic!("Number of inputs and targets must match");
+        }
+        for epoch in 0..epochs {
+            if epochs < 100 || epoch % (epochs / 100) == 0 {
+                println!("Epoch: {}", epoch);
             }
-            for j in 0..inputs.len() {
-                let outputs = self.feedforward(Matrix::from(inputs[j].clone()));
-                self.back_propogate(&outputs, Matrix::from(targets[j].clone()));
+            for (inp, tar) in inputs.iter().zip(targets.iter()) {
+                let input_matrix = Matrix::from_vec(inp.clone());
+                let target_matrix = Matrix::from_vec(tar.clone());
+                let _ = self.feedforward(input_matrix);
+                self.backpropagate(target_matrix);
             }
         }
-        
     }
 }
 
-fn activation(x: f64) -> f64 {
-    1.0 / (1.0 + (-x).exp()) // Sigmoid
-}   
-
-fn activation_derivative(x: f64) -> f64 {
-    let fx = activation(x);
-    fx * (1.0 - fx) // Sigmoid derivative
-}
-
-
-pub fn main() {
-    let inputs: Vec<Vec<f64>> = vec![
+fn main() {
+    let inputs = vec![
         vec![0.0, 0.0],
         vec![0.0, 1.0],
         vec![1.0, 0.0],
         vec![1.0, 1.0],
     ];
 
-    let targets: Vec<Vec<f64>> = vec![
-        vec![0.0],
-        vec![1.0],
-        vec![1.0],
-        vec![0.0],
-    ];
+    let targets = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
 
-    let mut network = Network::new(vec![2, 3, 1], activation, activation_derivative, 0.5);
-    network.train(inputs, targets, 10000);
-    println!("0 XOR 0: {:?}", network.feedforward(Matrix::from(vec![0.0,0.0])));
-    println!("0 XOR 1: {:?}", network.feedforward(Matrix::from(vec![0.0,1.0])));
-    println!("1 XOR 0: {:?}", network.feedforward(Matrix::from(vec![1.0,0.0])));
-    println!("1 XOR 1: {:?}", network.feedforward(Matrix::from(vec![1.0,1.0])));
+    // 2 inputs, one hidden layer with 3 neurons, 1 output neuron.
+    let mut network = Network::new(vec![2, 3, 1], 0.5);
+
+    network.train(inputs.clone(), targets.clone(), 10_000);
+
+    println!(
+        "0 XOR 0: {:?}",
+        network.feedforward(Matrix::from_vec(vec![0.0, 0.0])).data
+    );
+    println!(
+        "0 XOR 1: {:?}",
+        network.feedforward(Matrix::from_vec(vec![0.0, 1.0])).data
+    );
+    println!(
+        "1 XOR 0: {:?}",
+        network.feedforward(Matrix::from_vec(vec![1.0, 0.0])).data
+    );
+    println!(
+        "1 XOR 1: {:?}",
+        network.feedforward(Matrix::from_vec(vec![1.0, 1.0])).data
+    );
 }
