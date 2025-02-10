@@ -34,10 +34,10 @@ impl Matrix {
 
     /// Creates a matrix of the given dimensions with random values in [0, 1).
     pub fn random(rows: usize, cols: usize) -> Matrix {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut data = Vec::with_capacity(rows * cols);
         for _ in 0..(rows * cols) {
-            data.push(rng.gen_range(0.0..1.0));
+            data.push(rng.random_range(0.0..1.0));
         }
         Matrix { rows, cols, data }
     }
@@ -104,7 +104,6 @@ impl Matrix {
     }
 }
 
-//add
 impl Add for Matrix {
     type Output = Matrix;
 
@@ -126,7 +125,6 @@ impl Add for Matrix {
     }
 }
 
-//mat sub
 impl Sub for Matrix {
     type Output = Matrix;
 
@@ -253,8 +251,6 @@ impl Network {
         self.biases[num_layers - 2] =
             self.biases[num_layers - 2].clone() + delta.clone().scalar_mul(self.learning_rate);
 
-        // --- 3. Propagate the error backwards and update earlier layers ---
-        // Loop backwards over hidden layers (l indexes the layer that produced the activation we’re updating)
         for l in (1..(num_layers - 1)).rev() {
             // the weights connecting layer l to l+1 are at index l.
             let weight_next = self.weights[l].clone();
